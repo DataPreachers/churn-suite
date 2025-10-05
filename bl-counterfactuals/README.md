@@ -18,7 +18,7 @@ Business-Logic für Counterfactuals-Analyse mit SHAP-Integration und Digitalizat
 ### **Pipeline starten:**
 ```bash
 # Über UI
-http://localhost:8080/ → Experiment auswählen → "CF" starten
+http://localhost:5051/crud/index.html → Experiment auswählen → "CF" starten
 
 # Über API
 curl -X POST http://localhost:5050/run/cf -d '{"experiment_id":1}'

@@ -18,7 +18,7 @@ Business-Logic für Cox-Survival-Analyse mit Customer Risk Profiling und Priorit
 ### **Pipeline starten:**
 ```bash
 # Über UI
-http://localhost:8080/ → Experiment auswählen → "Cox" starten
+http://localhost:5051/crud/index.html → Experiment auswählen → "Cox" starten
 
 # Über API
 curl -X POST http://localhost:5050/run/cox -d '{"experiment_id":1, "cutoff_exclusive":"202501"}'

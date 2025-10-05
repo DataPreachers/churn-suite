@@ -7,10 +7,12 @@ Reines HTML/JS Frontend für Runner-Service API. Keine BL-Imports nötig.
 
 ## Quick Start
 ```bash
-cd /Users/klaus.reiners/Projekte/churn-suite/ui-crud
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat/ui-crud
 python3 -m http.server 8080
 # Browser: http://localhost:8080
 ```
+
+> Hinweis: Bei `make start` wird die CRUD-UI automatisch über das Management Studio unter http://localhost:5051/crud/index.html ausgeliefert.
 
 ## Funktionen
 - Pipeline-Ausführung (Churn, Cox, Counterfactuals) über Runner-API

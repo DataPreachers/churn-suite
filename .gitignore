@@ -13,3 +13,7 @@ bl-churn/dynamic_system_outputs/**
 .vscode/
 *.log
 
+# Python Bytecode
+__pycache__/
+*.pyc
+

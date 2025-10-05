@@ -4,22 +4,27 @@
 
 ## 🚀 **Schnellstart**
 
+### **0. Virtuelle Umgebung aktivieren:**
+```bash
+source .venv/bin/activate
+```
+
 ### **1. Services starten (Make):**
 ```bash
-cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite
-make start          # Runner (5050) + Management Studio (5051)
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+make start          # Runner (5050) + Management Studio & CRUD (5051)
 # make restart / make status / make down
 ```
 
 ### **2. URLs öffnen:**
-- **Pipeline Runner**: http://localhost:8080/
-- **Experiment CRUD**: http://localhost:8080/experiments.html  
-- **Management Studio**: http://localhost:5051/sql/
-- **API Docs**: http://localhost:5050/docs
+- **Pipeline Runner UI**: http://localhost:5051/crud/index.html
+- **Experiment CRUD**: http://localhost:5051/crud/experiments.html  
+- **Management Studio (SQL)**: http://localhost:5051/sql/
+- **Runner API Docs**: http://localhost:5050/docs
 
 ### **3. Erste Schritte:**
-1. **Experiment erstellen**: http://localhost:8080/experiments.html
-2. **Pipeline starten**: http://localhost:8080/ → Experiment auswählen → "Churn" starten
+1. **Experiment erstellen**: http://localhost:5051/crud/experiments.html
+2. **Pipeline starten**: http://localhost:5051/crud/index.html → Experiment auswählen → "Churn" starten
 3. **Ergebnisse ansehen**: http://localhost:5051/sql/ → Tabellen durchsuchen
 
 ### **4. Daten laden (CSV → Stage0 → rawdata):**

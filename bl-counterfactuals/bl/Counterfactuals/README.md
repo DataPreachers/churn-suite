@@ -73,17 +73,17 @@ output:
 ### **Basic Usage:**
 ```bash
 # Environment setup
-source churn_prediction_env/bin/activate
-cd /Users/klaus.reiners/Projekte/Cursor\ ChurnPrediction\ -\ Reengineering
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+source .venv/bin/activate
 
 # Analyze counterfactuals for experiment (20% sample)
-python bl/Counterfactuals/counterfactuals_cli.py --experiment-id 1 --sample 0.2
+python bl-counterfactuals/bl/Counterfactuals/counterfactuals_cli.py --experiment-id 1 --sample 0.2
 
 # Full analysis for all customers
-python bl/Counterfactuals/counterfactuals_cli.py --experiment-id 1 --sample 1.0 
+python bl-counterfactuals/bl/Counterfactuals/counterfactuals_cli.py --experiment-id 1 --sample 1.0 
 
 # Limited analysis (first 100 customers)  
-python bl/Counterfactuals/counterfactuals_cli.py --experiment-id 1 --limit 100
+python bl-counterfactuals/bl/Counterfactuals/counterfactuals_cli.py --experiment-id 1 --limit 100
 ```
 
 ### **Programmatic API:**

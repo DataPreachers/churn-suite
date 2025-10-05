@@ -18,7 +18,7 @@ Business-Logic für SHAP-Erklärbarkeit mit Digitalization-Segmentierung.
 ### **Pipeline starten:**
 ```bash
 # Über UI
-http://localhost:8080/ → Experiment auswählen → "SHAP" starten
+http://localhost:5051/crud/index.html → Experiment auswählen → "SHAP" starten
 
 # Über API
 curl -X POST http://localhost:5050/run/shap -d '{"experiment_id":1}'

@@ -59,11 +59,11 @@ output:
 
 ### **Setup (empfohlen: Python 3.11 venv)**
 ```bash
-cd /Users/klaus.reiners/Projekte/churn-suite
-python3.11 -m venv .venv311
-source .venv311/bin/activate
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+python3.11 -m venv .venv
+source .venv/bin/activate
 pip install -U pip
-pip install pandas==2.0.3 numpy==1.26.4 scikit-learn==1.3.2 duckdb==1.0.0
+pip install -r requirements.txt
 
 # optional: Ausgabeverzeichnisse sicherstellen
 mkdir -p bl-churn/dynamic_system_outputs/stage0_cache bl-churn/dynamic_system_outputs/outbox
@@ -71,8 +71,8 @@ mkdir -p bl-churn/dynamic_system_outputs/stage0_cache bl-churn/dynamic_system_ou
 
 ### **Direkte Ingestion einer CSV → Stage0 (+Outbox)**
 ```bash
-cd /Users/klaus.reiners/Projekte/churn-suite
-source .venv311/bin/activate
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+source .venv/bin/activate
 python -c "from bl_input_run import run; run()"  # siehe Programmatic API unten
 ```
 
@@ -98,7 +98,7 @@ service = InputIngestionService()
 
 # Konkrete CSV verarbeiten
 stage0_path, results = service.ingest_csv_to_stage0(
-    csv_path=Path("/Users/klaus.reiners/Projekte/churn-suite/bl-input/input_data/churn_Data_cleaned.csv"),
+    csv_path=Path("/Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat/bl-input/input_data/churn_Data_cleaned.csv"),
     register_in_json_db=True,
     export_to_outbox=True,
 )
@@ -108,8 +108,8 @@ print(results.get("outbox_path"))
 # Optional: kleiner Runner für CLI-ähnlichen Aufruf
 def run():
     s = InputIngestionService()
-    p1 = Path("/Users/klaus.reiners/Projekte/churn-suite/bl-input/input_data/churn_Data_cleaned.csv")
-    p2 = Path("/Users/klaus.reiners/Projekte/churn-suite/bl-input/input_data/ChurnData_20250831.csv")
+    p1 = Path("/Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat/bl-input/input_data/churn_Data_cleaned.csv")
+    p2 = Path("/Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat/bl-input/input_data/ChurnData_20250831.csv")
     for p in (p1, p2):
         sp, res = s.ingest_csv_to_stage0(p, register_in_json_db=True, export_to_outbox=True)
         print(sp)
@@ -169,7 +169,7 @@ integration_errors:
   
 python_version_conflicts:
   symptom: "pandas/numpy ImportError (z. B. unter Python 3.13)"
-  solution: "Repo-venv mit Python 3.11 verwenden (.venv311); Versionen: pandas 2.0.3, numpy 1.26.4, scikit-learn 1.3.2"
+  solution: "Repo-venv mit Python 3.11 verwenden (.venv); Versionen gemäß requirements.txt"
 ```
 
 ## 🧱 **Data Dictionary Typregeln (wirksam ab Stage0)**

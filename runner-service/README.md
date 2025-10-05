@@ -12,7 +12,7 @@ Dünne Orchestrierungsschicht für BL-Module (Churn, Cox, Counterfactuals).
 
 ## Quick Start
 ```bash
-cd /Users/klaus.reiners/Projekte/churn-suite
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
 source .venv/bin/activate
 python runner-service/app.py
 ```

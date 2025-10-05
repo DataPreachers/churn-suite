@@ -70,17 +70,17 @@ output:
 ### **Basic Usage:**
 ```bash
 # Environment setup
-source churn_prediction_env/bin/activate
-cd /Users/klaus.reiners/Projekte/Cursor\ ChurnPrediction\ -\ Reengineering
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+source .venv/bin/activate
 
 # Process single experiment
-python bl/Churn/churn_working_main.py --experiment-id 200 --training-from 202001 --training-to 202312 --prediction-timebase 202401
+python bl-churn/bl/Churn/churn_working_main.py --experiment-id 200 --training-from 202001 --training-to 202312 --prediction-timebase 202401
 
 # Auto-process all pending experiments  
-python bl/Churn/churn_auto_processor.py
+python bl-churn/bl/Churn/churn_auto_processor.py
 
 # Check processing status
-python bl/Churn/churn_auto_processor.py --status
+python bl-churn/bl/Churn/churn_auto_processor.py --status
 ```
 
 ### **Programmatic API:**
@@ -105,7 +105,7 @@ config_files:
   algorithm_config: "config/algorithm_config_optimized.json"
   data_dictionary: "config/data_dictionary_optimized.json" 
   paths: "config/paths_config.py"
-  constants: "bl/Churn/churn_constants.py"
+  constants: "bl-churn/bl/Churn/churn_constants.py"
 ```
 
 ### **Performance Targets:**
@@ -213,7 +213,7 @@ optimization_tips:
 ### **After Code Changes:**
 ```yaml
 validation_steps:
-  - "Run: python bl/Churn/churn_auto_processor.py --validate"
+  - "Run: python bl-churn/bl/Churn/churn_auto_processor.py --validate"
   - "Check: All 5 JSON-Database tables populated correctly"
   - "Verify: Performance metrics within expected ranges"
   - "Test: End-to-end experiment processing"

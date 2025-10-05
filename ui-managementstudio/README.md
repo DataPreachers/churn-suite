@@ -17,15 +17,15 @@ Web-UI für SQL-Abfragen auf JSON-Database und Pipeline-Management.
 
 ### **Service starten:**
 ```bash
-cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
 source .venv/bin/activate
 python ui-managementstudio/app.py
 ```
 
 ### **URLs:**
 - **SQL-Interface**: http://localhost:5051/sql/
-- **Pipeline Runner**: http://localhost:8080/ (über ui-crud)
-- **Experiment CRUD**: http://localhost:8080/experiments.html
+- **Pipeline Runner**: http://localhost:5051/crud/index.html
+- **Experiment CRUD**: http://localhost:5051/crud/experiments.html
 
 ## 📊 **Features**
 

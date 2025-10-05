@@ -69,20 +69,20 @@ output:
 ### **Basic Usage:**
 ```bash
 # Environment setup
-source churn_prediction_env/bin/activate
-cd /Users/klaus.reiners/Projekte/Cursor\ ChurnPrediction\ -\ Reengineering
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+source .venv/bin/activate
 
 # Process single experiment
-python bl/Cox/cox_working_main.py --experiment-id 8 --cutoff-months 24
+python bl-cox/bl/Cox/cox_working_main.py --experiment-id 8 --cutoff-months 24
 
 # Auto-process all pending experiments
-python bl/Cox/cox_auto_processor.py
+python bl-cox/bl/Cox/cox_auto_processor.py
 
 # Check processing status
-python bl/Cox/cox_auto_processor.py --status
+python bl-cox/bl/Cox/cox_auto_processor.py --status
 
 # Validate cutoff parameters  
-python bl/Cox/cox_auto_processor.py --check-cutoff
+python bl-cox/bl/Cox/cox_auto_processor.py --check-cutoff
 ```
 
 ### **Programmatic API:**
@@ -105,7 +105,7 @@ risk_profile = qi.execute_query("SELECT * FROM customer_risk_profile WHERE id_ex
 ### **Key Configuration Files:**
 ```yaml
 config_files:
-  constants: "bl/Cox/cox_constants.py"
+  constants: "bl-cox/bl/Cox/cox_constants.py"
   data_dictionary: "config/data_dictionary_optimized.json"
   paths: "config/paths_config.py"
   
@@ -277,7 +277,7 @@ ORDER BY anzahl_kunden DESC;
 ### **After Code Changes:**
 ```yaml
 validation_steps:
-  - "Run: python bl/Cox/cox_auto_processor.py --validate"
+  - "Run: python bl-cox/bl/Cox/cox_auto_processor.py --validate"
   - "Check: C-Index within 0.8094 ± 0.001 range"
   - "Verify: All 5 JSON-Database tables populated"
   - "Test: SQL views return expected data structure"

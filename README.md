@@ -23,7 +23,7 @@ Zuletzt geprüft: 2025-09-22
   - Live-Log-Streaming und Job-Tracking
 - **Zentrale Konfiguration**:
   - **Einzige ProjectPaths-Quelle**: `config/paths_config.py` (Root-Level)
-  - **OUTBOX_ROOT**: `dynamic_system_outputs/outbox/` (Root-Level, nicht mehr unter bl-churn)
+  - **OUTBOX_ROOT**: `bl-churn/dynamic_system_outputs/outbox/`
   - **Eine Python-Umgebung**: `requirements.txt` (Root-Level) für alle Module
 - **DAL (Data Access Layer)**:
   - SQL-Server-Zugriff kapseln (z. B. `bl-churn/config/data_access_layer.py`, `json-database/bl/json_database/sql_query_interface.py`)
@@ -84,7 +84,7 @@ Zuletzt geprüft: 2025-09-22
   - `make mgmt` / `make open`: Management Studio starten/öffnen
   - `make down`: Ports bereinigen
 - **Outbox-Steuerung**:
-  - `OUTBOX_ROOT` (ENV), Fallback: `dynamic_system_outputs/outbox` (Root-Level)
+  - `OUTBOX_ROOT` (ENV), Fallback: `bl-churn/dynamic_system_outputs/outbox`
 
 ### 5.1) Dateningestion & Idempotenz (Clean Import)
 
@@ -110,12 +110,13 @@ Zuletzt geprüft: 2025-09-22
 
 ```bash
 # 1) Services starten
-cd /Users/klaus.reiners/Projekte/churn-suite
-python runner-service/app.py &      # Port 5050
-python ui-managementstudio/app.py & # Port 5051
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat
+source .venv/bin/activate
+make start
 
 # 2) Browser öffnen
 # - Pipeline Runner UI:  http://localhost:5051/crud/index.html
+# - Experiment CRUD:     http://localhost:5051/crud/experiments.html
 # - SQL Management UI:   http://localhost:5051/sql
 
 # 3) API-Beispiele (Einzellauf)
@@ -128,7 +129,7 @@ curl -X POST http://localhost:5050/run/cf    -H 'Content-Type: application/json'
 **Legacy (Management Studio):**
 ```bash
 # Projekt-Workspace
-cd /Users/klaus.reiners/Projekte/churn-suite/bl-workspace
+cd /Users/klaus.reiners/Dokumente/Projekte/churn-suite-flat/bl-workspace
 
 # Ingestion (alle neuen CSVs)
 make ingest

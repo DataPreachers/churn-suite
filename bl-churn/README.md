@@ -18,7 +18,7 @@ Business-Logic für Churn-Prediction mit Enhanced Early Warning Model.
 ### **Pipeline starten:**
 ```bash
 # Über UI
-http://localhost:8080/ → Experiment auswählen → "Churn" starten
+http://localhost:5051/crud/index.html → Experiment auswählen → "Churn" starten
 
 # Über API
 curl -X POST http://localhost:5050/run/churn -d '{"experiment_id":1}'

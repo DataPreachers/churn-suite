@@ -1,0 +1,33 @@
+{
+  "version": "1.1",
+  "defaults": {
+    "step": 1
+  },
+  "features": {
+    "I_UHD": {
+      "weight": 1.5,
+      "type": "integer",
+      "step": 2
+    },
+    "N_DIGITALIZATIONRATE": {
+      "weight": 2.0,
+      "type": "categorical"
+    },
+    "I_SOCIALINSURANCENOTES": {
+      "weight": 1.0,
+      "type": "integer",
+      "step": 5
+    },
+    "I_MAINTENANCE": {
+      "weight": 2.5,
+      "type": "continuous",
+      "step": 0.1,
+      "min": 0.0
+    },
+    "I_UPSELL": {
+      "weight": 1.2,
+      "type": "integer",
+      "step": 1
+    }
+  }
+}

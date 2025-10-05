@@ -1,0 +1,46 @@
+{
+  "N_DIGITALIZATIONRATE": [
+    "N_DIGITALIZATIONRATE_ENCODED_0",
+    "N_DIGITALIZATIONRATE_ENCODED_1",
+    "N_DIGITALIZATIONRATE_ENCODED_2"
+  ],
+  "I_MAINTENANCE": [
+    "I_MAINTENANCE_rolling_12p_sum",
+    "I_MAINTENANCE_trend_12p"
+  ],
+  "I_UPGRADE": [
+    "I_UPGRADE_rolling_12p_mean",
+    "I_UPGRADE_activity_rate_6p",
+    "I_UPGRADE_trend_6p"
+  ],
+  "I_UPSELL": [
+    "I_UPSELL_rolling_12p_mean",
+    "I_UPSELL_trend_6p"
+  ],
+  "I_DOWNGRADE": [
+    "I_DOWNGRADE_rolling_12p_mean",
+    "I_DOWNGRADE_activity_rate_6p",
+    "I_DOWNGRADE_trend_6p"
+  ],
+  "I_DOWNSELL": [
+    "I_DOWNSELL_rolling_12p_mean",
+    "I_DOWNSELL_trend_6p"
+  ],
+  "I_UHD": [
+    "I_UHD_rolling_12p_mean",
+    "I_UHD_pct_change_6p"
+  ],
+  "I_CONSULTING": [
+    "I_CONSULTING_rolling_12p_mean",
+    "I_CONSULTING_trend_6p"
+  ],
+  "I_SEMINAR": [
+    "I_SEMINAR_rolling_12p_mean",
+    "I_SEMINAR_activity_rate_6p"
+  ],
+  "I_SOCIALINSURANCENOTES": [
+    "I_SOCIALINSURANCENOTES_rolling_12p_mean",
+    "I_SOCIALINSURANCENOTES_trend_6p"
+  ]
+}
+

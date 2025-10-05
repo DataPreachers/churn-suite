@@ -1,0 +1,1117 @@
+{
+  "columns": {
+    "Kunde": {
+      "role": "PRIMARY_KEY",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "interpretation": {
+        "meaning": "Customer Identifier",
+        "uniqueness": "Primary key for customer identification",
+        "business_logic": "Each unique value represents one customer",
+        "aggregation_rules": {
+          "unique_counting": "Use nunique() to count distinct customers",
+          "grouping_dimension": "Primary grouping key for all customer-level analysis",
+          "time_series_relationship": "Combined with I_TIMEBASE creates customer journey"
+        },
+        "data_model": {
+          "cardinality": "One customer can have many timebase records",
+          "relationship": "1:N with I_TIMEBASE"
+        }
+      }
+    },
+    "I_TIMEBASE": {
+      "role": "TIMEBASE",
+      "data_type": "INTEGER",
+      "format": "YYYYMM",
+      "description": "Zeitbasierte Spalte im Format YYYYMM (z.B. 202412 für Dezember 2024)",
+      "auto_classified": true,
+      "interpretation": {
+        "meaning": "Temporal Dimension",
+        "format_rules": {
+          "pattern": "YYYYMM",
+          "example": "202412 = December 2024",
+          "year_extraction": "First 4 digits",
+          "month_extraction": "Last 2 digits"
+        },
+        "business_logic": "Each customer can have multiple timebase entries representing monthly data points",
+        "aggregation_rules": {
+          "year_grouping": "Extract year using str(I_TIMEBASE)[:4]",
+          "temporal_analysis": "Group by year for annual statistics",
+          "customer_journey": "Track customer over multiple timebase periods"
+        }
+      }
+    },
+    "N_DIGITALIZATIONRATE": {
+      "role": "CATEGORICAL_FEATURE",
+      "data_type": "DOUBLE",
+      "auto_classified": true,
+      "feature_group": "categorical_features",
+      "use_in_cox": true,
+      "cox_treatment": "one_hot_encoding",
+      "cox_description": "Digitalization Rate als kategorisches Feature mit One-Hot-Encoding"
+    },
+    "I_MAINTENANCE": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": true,
+      "cox_treatment": "rolling_features",
+      "cox_description": "Maintenance als numerisches Feature mit Rolling-Features (Mean, Sum, Std, Trend, Activity-Rate)"
+    },
+    "I_UPGRADE": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": true,
+      "cox_treatment": "rolling_features",
+      "cox_description": "Upgrade als numerisches Feature mit Rolling-Features"
+    },
+    "I_UPSELL": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": true,
+      "cox_treatment": "rolling_features",
+      "cox_description": "Upsell als numerisches Feature mit Rolling-Features"
+    },
+    "I_DOWNGRADE": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": true,
+      "cox_treatment": "rolling_features",
+      "cox_description": "Downgrade als numerisches Feature mit Rolling-Features"
+    },
+    "I_DOWNSELL": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": false,
+      "cox_treatment": null,
+      "cox_description": "Nicht für Cox-Analyse verwendet"
+    },
+    "I_UHD": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": false,
+      "cox_treatment": null,
+      "cox_description": "Nicht für Cox-Analyse verwendet"
+    },
+    "I_CONSULTING": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": false,
+      "cox_treatment": null,
+      "cox_description": "Nicht für Cox-Analyse verwendet"
+    },
+    "I_SEMINAR": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": false,
+      "cox_treatment": null,
+      "cox_description": "Nicht für Cox-Analyse verwendet"
+    },
+    "I_SOCIALINSURANCENOTES": {
+      "role": "DYNAMIC_FEATURE",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "use_in_cox": false,
+      "cox_treatment": null,
+      "cox_description": "Nicht für Cox-Analyse verwendet"
+    },
+    "I_Alive": {
+      "role": "TARGET",
+      "data_type": "INTEGER",
+      "auto_classified": true,
+      "interpretation": {
+        "meaning": "Customer Status",
+        "values": {
+          "1": "Customer is active/alive",
+          "0": "Customer has churned"
+        },
+        "business_logic": "I_Alive = 0 indicates churn event (1=alive, 0=churned)",
+        "aggregation_rules": {
+          "churn_calculation": "Count unique customers where I_Alive = 0",
+          "grouping_key": "Kunde",
+          "temporal_dimension": "I_TIMEBASE"
+        }
+      }
+    },
+    "experiment_id": {
+      "data_type": "INTEGER"
+    },
+    "file_id": {
+      "role": "LINEAGE",
+      "data_type": "INTEGER",
+      "description": "FK to files.id (JSON-DB)"
+    },
+    "Letzte_Timebase": {
+      "data_type": "INTEGER"
+    },
+    "I_ALIVE": {
+      "data_type": "INTEGER"
+    },
+    "Churn_Wahrscheinlichkeit": {
+      "data_type": "DOUBLE"
+    },
+    "Threshold_Standard_0.5": {
+      "data_type": "DOUBLE"
+    },
+    "Predicted_Standard_0.5": {
+      "data_type": "BOOLEAN"
+    },
+    "Threshold_Optimal": {
+      "data_type": "DOUBLE"
+    },
+    "Predicted_Optimal": {
+      "data_type": "BOOLEAN"
+    },
+    "Threshold_Elbow": {
+      "data_type": "DOUBLE"
+    },
+    "Predicted_Elbow": {
+      "data_type": "BOOLEAN"
+    },
+    "Threshold_F1_Optimal": {
+      "data_type": "DOUBLE"
+    },
+    "Predicted_F1_Optimal": {
+      "data_type": "BOOLEAN"
+    },
+    "Threshold_Precision_First": {
+      "data_type": "DOUBLE"
+    },
+    "Predicted_Precision_First": {
+      "data_type": "BOOLEAN"
+    },
+    "Threshold_Recall_First": {
+      "data_type": "DOUBLE"
+    },
+    "Predicted_Recall_First": {
+      "data_type": "BOOLEAN"
+    },
+    "source": {
+      "data_type": "TEXT"
+    },
+    "I_CONSULTING_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_CONSULTING_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_activity_rate_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_activity_rate_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_activity_rate_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_pct_change_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_pct_change_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_pct_change_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_trend_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_trend_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_trend_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNGRADE_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_activity_rate_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_activity_rate_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_activity_rate_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cummax_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cummax_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cummax_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cumsum_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cumsum_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cumsum_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_pct_change_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_pct_change_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_pct_change_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_trend_18p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_trend_24p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_trend_36p": {
+      "data_type": "INTEGER"
+    },
+    "I_DOWNSELL_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_MAINTENANCE_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SEMINAR_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_SOCIALINSURANCENOTES_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UHD_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPGRADE_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_activity_rate_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_activity_rate_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_cummax_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_cummax_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_cumsum_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_cumsum_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_pct_change_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_pct_change_6p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_12p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_12p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_12p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_18p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_18p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_18p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_24p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_24p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_24p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_36p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_36p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_36p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_6p_mean": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_6p_std": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_rolling_6p_sum": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_trend_12p": {
+      "data_type": "INTEGER"
+    },
+    "I_UPSELL_trend_6p": {
+      "data_type": "INTEGER"
+    },
+    "N_DIGITALIZATIONRATE_above_05": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_cat_high": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_cat_low": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_cat_medium": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_cat_none": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_continuous": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_is_digital": {
+      "data_type": "DOUBLE"
+    },
+    "N_DIGITALIZATIONRATE_is_highly_digital": {
+      "data_type": "DOUBLE"
+    },
+    "analysis_date": {
+      "data_type": "TEXT"
+    },
+    "c_index": {
+      "data_type": "TEXT"
+    },
+    "cox_analysis_type": {
+      "data_type": "TEXT"
+    },
+    "customer_status": {
+      "data_type": "TEXT"
+    },
+    "event_occurred": {
+      "data_type": "TEXT"
+    },
+    "feature_count": {
+      "data_type": "TEXT"
+    },
+    "model_performance": {
+      "data_type": "TEXT"
+    },
+    "ratio_I_CONSULTING_vs_I_DOWNGRADE": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_CONSULTING_vs_I_DOWNSELL": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_CONSULTING_vs_I_MAINTENANCE": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_CONSULTING_vs_I_SEMINAR": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_DOWNGRADE_vs_I_DOWNSELL": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_DOWNGRADE_vs_I_MAINTENANCE": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_DOWNGRADE_vs_I_SEMINAR": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_DOWNSELL_vs_I_MAINTENANCE": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_DOWNSELL_vs_I_SEMINAR": {
+      "data_type": "DOUBLE"
+    },
+    "ratio_I_MAINTENANCE_vs_I_SEMINAR": {
+      "data_type": "DOUBLE"
+    },
+    "survival_months": {
+      "data_type": "TEXT"
+    }
+  },
+  "algorithm_config": {
+    "model_type": "RandomForestClassifier",
+    "class_weight": "balanced",
+    "n_estimators": 300,
+    "max_depth": 15,
+    "min_samples_split": 5,
+    "min_samples_leaf": 1,
+    "random_state": 42,
+    "sampling_method": "class_weight",
+    "sampling_config": {
+      "strategy": "class_weight",
+      "parameters": {
+        "class_weight": "balanced",
+        "random_state": 42
+      }
+    },
+    "feature_analysis_optimized": true,
+    "dominant_features_excluded": [],
+    "optimization_date": "2025-08-02T16:26:17"
+  },
+  "feature_groups": {
+    "primary_keys": [
+      "Kunde"
+    ],
+    "timebase": [
+      "I_TIMEBASE"
+    ],
+    "target": [
+      "I_Alive"
+    ],
+    "static_features": [],
+    "dynamic_features": [
+      "I_MAINTENANCE",
+      "I_UPGRADE",
+      "I_UPSELL",
+      "I_DOWNGRADE",
+      "I_DOWNSELL",
+      "I_UHD",
+      "I_CONSULTING",
+      "I_SEMINAR",
+      "I_SOCIALINSURANCENOTES"
+    ],
+    "categorical_features": [
+      "N_DIGITALIZATIONRATE"
+    ],
+    "excluded_features": []
+  },
+  "cox_config": {
+    "enabled": true,
+    "feature_selection": "use_in_cox",
+    "treatments": {
+      "rolling_features": {
+        "description": "Rolling-Features für numerische dynamische Features",
+        "windows": [
+          6,
+          12,
+          18
+        ],
+        "features": [
+          "mean",
+          "sum",
+          "std",
+          "trend",
+          "activity_rate"
+        ],
+        "applicable_features": [
+          "I_MAINTENANCE"
+        ]
+      },
+      "one_hot_encoding": {
+        "description": "One-Hot-Encoding für kategorische Features",
+        "applicable_features": [
+          "N_DIGITALIZATIONRATE"
+        ]
+      }
+    },
+    "default_parameters": {
+      "horizons": [
+        6,
+        12
+      ],
+      "rmst_horizons": [
+        12,
+        24
+      ],
+      "weights": [
+        0.6,
+        0.3,
+        0.1
+      ]
+    }
+  }
+}

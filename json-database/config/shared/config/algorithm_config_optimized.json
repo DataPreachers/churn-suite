@@ -1,0 +1,17 @@
+{
+  "model_type": "RandomForestClassifier",
+  "class_weight": "balanced_subsample",
+  "n_estimators": 500,
+  "max_depth": 10,
+  "min_samples_split": 5,
+  "min_samples_leaf": 1,
+  "random_state": 42,
+  "sampling_config": {
+    "strategy": "combination",
+    "parameters": {
+      "sampling_ratio": 5.0,
+      "k_neighbors": 3,
+      "random_state": 42
+    }
+  }
+}

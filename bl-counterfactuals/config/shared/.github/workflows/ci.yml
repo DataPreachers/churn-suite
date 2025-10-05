@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Validate JSON files
+        run: |
+          python - <<'PY'
+          import json,glob,sys
+          files=glob.glob('config/*.json')
+          failed=False
+          for f in files:
+              try:
+                  json.load(open(f,'r',encoding='utf-8'))
+              except Exception as e:
+                  print(f'Invalid JSON: {f}: {e}')
+                  failed=True
+          sys.exit(1 if failed else 0)
+          PY
+
+

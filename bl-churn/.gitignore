@@ -1,0 +1,8 @@
+# Runtime artifacts
+dynamic_system_outputs/
+**/__pycache__/
+*.pyc
+.DS_Store
+
+# Ignore heavy backtest JSON artifacts (>50MB)
+models/*Enhanced_EarlyWarning_Backtest_*.json

@@ -1,0 +1,8 @@
+{
+  "version": "1.0",
+  "enforce_real_analysis": true,
+  "enforce_real_backtest": true,
+  "runtime": {
+    "fail_fast": true
+  }
+}

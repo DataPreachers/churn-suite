@@ -361,7 +361,8 @@ class CoxEvaluator:
         diagnostics = {
             'convergence_achieved': True,
             'model_warnings': [],
-            'data_quality_issues': []
+            'data_quality_issues': [],
+            'residual_summaries': {}
         }
         
         try:
@@ -384,6 +385,34 @@ class CoxEvaluator:
                 diagnostics['data_quality_issues'].append(f"Niedrige Event-Rate: {event_rate:.3f}")
             elif event_rate > 0.8:
                 diagnostics['data_quality_issues'].append(f"Hohe Event-Rate: {event_rate:.3f}")
+
+            # Residual-Diagnostik
+            residual_summaries = {}
+            try:
+                martingale_res = model.compute_residuals(data, kind='martingale')
+                martingale_series = martingale_res.squeeze()
+                residual_summaries['martingale'] = {
+                    'mean': float(np.mean(martingale_series)),
+                    'std': float(np.std(martingale_series)),
+                    'min': float(np.min(martingale_series)),
+                    'max': float(np.max(martingale_series))
+                }
+            except Exception as e:
+                diagnostics['model_warnings'].append(f"Martingale-Residuals nicht berechenbar: {e}")
+
+            try:
+                schoenfeld_res = model.compute_residuals(data, kind='schoenfeld')
+                if isinstance(schoenfeld_res, pd.DataFrame):
+                    max_abs = schoenfeld_res.abs().max().sort_values(ascending=False)
+                    top_features = max_abs.head(5).to_dict()
+                    residual_summaries['schoenfeld_max_abs'] = {
+                        feature: float(value) for feature, value in top_features.items()
+                    }
+            except Exception as e:
+                diagnostics['model_warnings'].append(f"Schoenfeld-Residuals nicht berechenbar: {e}")
+
+            if residual_summaries:
+                diagnostics['residual_summaries'] = residual_summaries
             
             # Gesamt-Assessment
             diagnostics['overall_quality'] = 'good'

@@ -18,7 +18,7 @@ import json
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Any, Tuple, Optional, Union
+from typing import Dict, List, Any, Tuple, Optional, Union, TYPE_CHECKING
 from datetime import datetime
 import logging
 import sys
@@ -29,7 +29,8 @@ import warnings
 
 # Projekt-Pfade hinzufügen
 project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 try:
     from config.paths_config import ProjectPaths
@@ -45,6 +46,24 @@ except ImportError as e:
     TWELVE_MONTH_HORIZON = 12
     HIGH_CORRELATION_THRESHOLD = 0.95
     NEAR_ZERO_VARIANCE_THRESHOLD = 0.01
+
+json_db_root: Optional[Path] = None
+if 'ProjectPaths' in globals() and ProjectPaths is not None:
+    try:
+        json_db_root = ProjectPaths.json_database_directory()
+        if str(json_db_root) not in sys.path:
+            sys.path.insert(0, str(json_db_root))
+    except Exception as json_db_err:
+        print(f"⚠️ JSON-DB Pfad konnte nicht gesetzt werden: {json_db_err}")
+        json_db_root = None
+
+try:
+    from bl.json_database.sql_query_interface import SQLQueryInterface  # type: ignore
+except ImportError:
+    SQLQueryInterface = None  # type: ignore
+
+if TYPE_CHECKING:  # pragma: no cover - nur für Typprüfer relevant
+    from bl.json_database.sql_query_interface import SQLQueryInterface as _SQLQueryInterfaceType  # type: ignore
 
 
 class CoxFeatureEngine:
@@ -76,6 +95,7 @@ class CoxFeatureEngine:
         self.scaler: Optional[StandardScaler] = None
         self.feature_importance: Dict[str, float] = {}
         self.feature_stats: Dict[str, Any] = {}
+        self.sql_interface: Optional[Any] = None
         
         self.logger.info("🔧 Cox Feature Engine initialisiert")
     
@@ -102,9 +122,10 @@ class CoxFeatureEngine:
             'use_enhanced_features': False,   # Temporär deaktiviert - fokus auf Basis-Features
             'use_data_dictionary': True,      # Data Dictionary Integration
             'feature_selection_k': 15,        # Top-K Features
-            'standardize_features': False,    # Deaktiviert wegen Division-durch-Null bei wenig Varianz
+            'standardize_features': True,    # Standardisierung für stabile Koeffizienten
             'remove_high_correlation': True,  # Korrelations-Filter
-            'correlation_threshold': 0.6,  # Ultra-aggressiv gegen Korrelation - Data Leakage Schutz
+            'remove_low_variance': True,
+            'correlation_threshold': 0.9,  # Großzügiger, um mehr Featurefamilien zu behalten
             'variance_threshold': 0.1,  # Erhöht gegen Near-Zero-Variance bei zensierten Daten
             'base_features': ['I_SOCIALINSURANCENOTES'],  # HAUPTFEATURE: Unabhängig von I_Alive Status
             'categorical_features': ['N_DIGITALIZATIONRATE'],  # One-Hot Features
@@ -115,8 +136,133 @@ class CoxFeatureEngine:
                 'early_warning_features',
                 'categorical_features',
                 'interaction_features'
-            ]
+            ],
+            'use_precomputed_features': True,
+            'precomputed_table': 'customer_churn_details',
+            'meta_feature_columns': [
+                'Letzte_Timebase',
+                'I_ALIVE',
+                'Churn_Wahrscheinlichkeit',
+                'experiment_id',
+                'id_experiments',
+                'source',
+                'dt_created',
+                'dt_inserted',
+                'dt_updated'
+            ],
+            'meta_prefix_exclusions': ['Threshold_', 'Predicted_'],
+            'meta_contains_patterns': ['Churn_Wahrscheinlichkeit']
         }
+
+    def _ensure_sql_interface(self):
+        """Initialisiert bei Bedarf die SQLQueryInterface Instanz"""
+        if not self.feature_config.get('use_precomputed_features', True):
+            raise RuntimeError("Precomputed Features sind in der Konfiguration deaktiviert")
+        if SQLQueryInterface is None:
+            raise ImportError(
+                "SQLQueryInterface konnte nicht importiert werden – JSON-Database Pfad fehlt oder Paket nicht verfügbar"
+            )
+        if self.sql_interface is None:
+            self.sql_interface = SQLQueryInterface()
+        return self.sql_interface
+
+    def _load_precomputed_features(self, experiment_id: Optional[int] = None) -> pd.DataFrame:
+        """Lädt Precomputed Features aus customer_churn_details"""
+        sql = self._ensure_sql_interface()
+        table_name = self.feature_config.get('precomputed_table', 'customer_churn_details')
+        query = f"SELECT * FROM {table_name}"
+        df = sql.execute_query(query, output_format="pandas")
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            raise ValueError(f"Keine Daten in {table_name} verfügbar")
+        if 'Kunde' not in df.columns:
+            raise ValueError(f"Spalte 'Kunde' fehlt in {table_name}")
+
+        # Experiment-Filter anwenden (falls vorhanden)
+        if experiment_id is not None:
+            exp_val = int(experiment_id)
+            if 'experiment_id' in df.columns:
+                df = df[df['experiment_id'].astype('Int64') == exp_val]
+            elif 'id_experiments' in df.columns:
+                df = df[df['id_experiments'].astype('Int64') == exp_val]
+            else:
+                self.logger.warning(
+                    "⚠️ experiment_id Filter konnte nicht angewendet werden – Spalte fehlt in customer_churn_details"
+                )
+            if df.empty:
+                raise ValueError(
+                    f"Keine Kunden in {table_name} für experiment_id={experiment_id} gefunden"
+                )
+
+        # Neueste Timebase bevorzugen, dann Dubletten pro Kunde entfernen
+        if 'Letzte_Timebase' in df.columns:
+            df['Letzte_Timebase'] = pd.to_numeric(df['Letzte_Timebase'], errors='coerce')
+            df = df.sort_values(['Letzte_Timebase'], ascending=False)
+        df = df.drop_duplicates(subset=['Kunde'], keep='first')
+
+        df['Kunde'] = pd.to_numeric(df['Kunde'], errors='coerce')
+        df = df[df['Kunde'].notnull()]
+        df['Kunde'] = df['Kunde'].astype(int)
+
+        self.logger.info(
+            "📂 Precomputed Features geladen: %s Kunden, %s Spalten",
+            len(df),
+            len(df.columns)
+        )
+        return df.reset_index(drop=True)
+
+    def _determine_feature_columns(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
+        """Entfernt Meta-Spalten und gibt nutzbare Feature-Spalten zurück"""
+        meta_cols = set(self.feature_config.get('meta_feature_columns', []))
+        prefix_exclusions = tuple(self.feature_config.get('meta_prefix_exclusions', []))
+        contains_patterns = tuple(self.feature_config.get('meta_contains_patterns', []))
+
+        for col in df.columns:
+            if col in ('Kunde',):
+                continue
+            if any(col.startswith(prefix) for prefix in prefix_exclusions):
+                meta_cols.add(col)
+            if any(pattern in col for pattern in contains_patterns):
+                meta_cols.add(col)
+
+        feature_cols = [col for col in df.columns if col not in meta_cols and col != 'Kunde']
+
+        if not feature_cols:
+            raise ValueError("Keine nutzbaren Features nach Entfernen der Meta-Spalten gefunden")
+
+        filtered = df[['Kunde'] + feature_cols].copy()
+        filtered[feature_cols] = filtered[feature_cols].apply(pd.to_numeric, errors='coerce')
+
+        self.logger.info("📊 Nutze %s Feature-Spalten (nach Meta-Filter)", len(feature_cols))
+        return filtered, feature_cols
+
+    def _prepare_precomputed_features(
+        self,
+        survival_panel: pd.DataFrame,
+        experiment_id: Optional[int] = None
+    ) -> pd.DataFrame:
+        """Bereitet Precomputed Features für das Cox-Training vor"""
+        precomputed_df = self._load_precomputed_features(experiment_id=experiment_id)
+        feature_df, feature_cols = self._determine_feature_columns(precomputed_df)
+
+        # Nur Kunden behalten, die im Survival-Panel vorkommen
+        survival_customers = pd.to_numeric(
+            survival_panel['Kunde'], errors='coerce'
+        ).dropna().astype(int).unique()
+        feature_df = feature_df[feature_df['Kunde'].isin(survival_customers)].copy()
+
+        if feature_df.empty:
+            raise ValueError(
+                "Keine Überschneidung zwischen customer_churn_details und Survival-Panel gefunden"
+            )
+
+        feature_df = feature_df.drop_duplicates(subset=['Kunde']).sort_values('Kunde').reset_index(drop=True)
+
+        self.logger.info(
+            "✅ Precomputed Feature-Matrix vorbereitet: %s Kunden, %s Features",
+            len(feature_df),
+            len(feature_cols)
+        )
+        return feature_df
     
     def load_data_dictionary(self, dict_path: Optional[Path] = None) -> Dict[str, Any]:
         """
@@ -902,111 +1048,129 @@ class CoxFeatureEngine:
     # MAIN PIPELINE
     # =============================================================================
     
-    def create_cox_features(self, survival_panel: pd.DataFrame, 
-                          stage0_data: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def create_cox_features(self, survival_panel: pd.DataFrame,
+                          stage0_data: Optional[pd.DataFrame] = None,
+                          experiment_id: Optional[int] = None) -> pd.DataFrame:
         """
-        Hauptfunktion: Erstellt alle Cox-Features
-        
+        Hauptfunktion: Erstellt alle Cox-Features (präferiert Precomputed Features)
+
         Args:
             survival_panel: Cox-Survival-Panel
-            stage0_data: Stage0-Daten für Rolling-Features (optional)
-            
+            stage0_data: Legacy-Parameter, aktuell ungenutzt
+            experiment_id: Optionaler Filter für customer_churn_details
+
         Returns:
-            Vollständiger Feature-Datensatz für Cox-Modell mit Spalten:
-            - Kunde: Kunden-ID
-            - [FEATURE_NAMES]: Alle erstellten Features
+            Feature-Datensatz mit `Kunde` und Modellfeatures
         """
         self.logger.info("🚀 Starte Cox-Feature-Engineering-Pipeline")
         start_time = datetime.now()
-        
-        # Basis-DataFrame mit Kunden aus Survival-Panel
-        base_customers = survival_panel[['Kunde']].drop_duplicates()
-        self.logger.info(f"📊 Basis: {len(base_customers)} Kunden aus Survival-Panel")
-        
-        # 1. ROLLING-FEATURES erstellen (aus Stage0-Daten mit Loopback)
-        if stage0_data is not None:
-            self.logger.info("🔄 Schritt 1: Rolling-Features (ohne Loopback für unabhängige Features)")
-            # Direkte Features statt Rolling (bessere Performance)
-            rolling_features = self.create_direct_features(stage0_data, survival_panel)
-            features_df = base_customers.merge(rolling_features, on='Kunde', how='left')
+
+        if self.feature_config.get('use_precomputed_features', True):
+            features_df = self._prepare_precomputed_features(
+                survival_panel=survival_panel,
+                experiment_id=experiment_id
+            )
         else:
-            self.logger.warning("⚠️ Keine Stage0-Daten für Rolling-Features")
-            features_df = base_customers.copy()
-        
-        # 2. ONE-HOT FEATURES erstellen
-        if stage0_data is not None:
-            self.logger.info("🏷️ Schritt 2: One-Hot Features")
-            onehot_features = self.create_onehot_features(stage0_data)
-            features_df = features_df.merge(onehot_features, on='Kunde', how='left')
-        
-        # 3. ENHANCED FEATURES integrieren (falls verfügbar)
-        if self.feature_config['use_enhanced_features']:
-            self.logger.info("⚡ Schritt 3: Enhanced Features")
-            try:
-                enhanced_features = self.create_enhanced_features(stage0_data or survival_panel)
-                if isinstance(enhanced_features, pd.DataFrame) and len(enhanced_features.columns) > 1:  # Mehr als nur 'Kunde'
-                    features_df = features_df.merge(enhanced_features, on='Kunde', how='left')
-                    self.logger.info(f"✅ Enhanced Features integriert: {len(enhanced_features.columns)-1} Features")
-                else:
-                    self.logger.warning("⚠️ Enhanced Features übersprungen: Keine gültigen Features")
-            except Exception as e:
-                self.logger.warning(f"⚠️ Enhanced Features Integration fehlgeschlagen: {e}")
-                # Fortfahren ohne Enhanced Features
-        
-        # 4. MISSING VALUES behandeln
-        self.logger.info("🔧 Schritt 4: Missing Values")
-        features_df = self.handle_missing_values(features_df, strategy='zero')
-        
-        # 5. OUTLIERS behandeln (temporär deaktiviert für Debugging)
-        self.logger.info("🎯 Schritt 5: Ausreißer-Behandlung (übersprungen)")
-        # features_df = self.detect_outliers(features_df, method='iqr')  # Temporär deaktiviert
-        
-        # 6. LOW VARIANCE Features entfernen
+            raise NotImplementedError(
+                "Stage0-basierte Feature-Erstellung ist deaktiviert; aktiviere precomputed Features."
+            )
+
+        # 1. Missing Values
+        self.logger.info("🔧 Schritt 1: Missing Values")
+        features_df = self.handle_missing_values(features_df, strategy='median')
+        remaining_missing = features_df.isnull().sum().sum()
+        if remaining_missing > 0:
+            self.logger.warning(
+                "⚠️ %s verbleibende Missing Values nach Median-Imputation – ersetze durch 0",
+                remaining_missing
+            )
+            features_df = features_df.fillna(0)
+
+        # 2. Niedrige Varianz
         if self.feature_config.get('remove_low_variance', True):
-            self.logger.info("📊 Schritt 6: Niedrig-variante Features")
+            self.logger.info("📊 Schritt 2: Niedrig-variante Features")
             features_df = self.remove_low_variance_features(features_df)
-        
-        # 7. KORRELIERTE Features entfernen
-        if self.feature_config['remove_high_correlation']:
-            self.logger.info("🔗 Schritt 7: Korrelierte Features")
+
+        # 3. Korrelationsfilter
+        if self.feature_config.get('remove_high_correlation', True):
+            self.logger.info("🔗 Schritt 3: Korrelierte Features")
             features_df = self.remove_correlated_features(features_df)
-        
-        # 8. FEATURE SELECTION
-        if len([col for col in features_df.columns if col != 'Kunde']) > self.feature_config['feature_selection_k']:
-            self.logger.info("🎯 Schritt 8: Feature-Selektion")
-            
-            # Dummy-Target für Feature-Selection (verwende duration aus survival_panel)
+
+        full_features_df = features_df.copy()
+        # 4. Feature-Selektion
+        available_features = [col for col in features_df.columns if col != 'Kunde']
+        selection_k = self.feature_config.get('feature_selection_k', len(available_features))
+        selected_features: List[str]
+
+        mandatory_patterns = [
+            'N_DIGITALIZATIONRATE',
+            'I_SOCIALINSURANCENOTES'
+        ]
+
+        if len(available_features) > selection_k:
+            self.logger.info("🎯 Schritt 4: Feature-Selektion (Top-%s)", selection_k)
             target_data = survival_panel[['Kunde', 'duration']].drop_duplicates()
             merged_for_selection = features_df.merge(target_data, on='Kunde', how='inner')
-            
+
             if len(merged_for_selection) > 0:
                 selected_features = self.select_best_features(
-                    merged_for_selection.drop('duration', axis=1), 
+                    merged_for_selection.drop(columns=['duration']),
                     merged_for_selection['duration'],
                     method='combined'
                 )
-                self.selected_features = selected_features
-                features_df = features_df[['Kunde'] + selected_features]
-        
-        # 9. STANDARDISIERUNG
-        if self.feature_config['standardize_features']:
-            self.logger.info("📏 Schritt 9: Standardisierung")
+            else:
+                self.logger.warning(
+                    "⚠️ Keine Überschneidung zwischen Features und Survival-Dauer – verwende alle Features"
+                )
+                selected_features = available_features
+        else:
+            selected_features = available_features
+
+        # Pflichtfeatures sicherstellen (z. B. Segmentierung nach N_DIGITALIZATIONRATE)
+        mandatory_features_all = [
+            col for pattern in mandatory_patterns
+            for col in available_features
+            if pattern in col
+        ]
+        available_mandatory = [col for col in mandatory_features_all if col in full_features_df.columns]
+        missing_mandatory = [col for col in mandatory_features_all if col not in full_features_df.columns]
+
+        if available_mandatory:
+            self.logger.info(
+                "📌 Ergänze Pflichtfeatures: %s",
+                ', '.join(available_mandatory)
+            )
+            selected_features = list(dict.fromkeys(selected_features + available_mandatory))
+
+        if missing_mandatory:
+            self.logger.warning(
+                "⚠️ Einige Pflichtfeatures fehlen im DataFrame: %s",
+                ', '.join(missing_mandatory)
+            )
+
+        # Finale Feature-Schnitt aus ursprünglicher Matrix beziehen
+        features_df = full_features_df[['Kunde'] + selected_features]
+
+        self.selected_features = selected_features
+
+        # 5. Standardisierung (optional)
+        if self.feature_config.get('standardize_features', False):
+            self.logger.info("📏 Schritt 5: Standardisierung")
             features_df = self.standardize_features(features_df, exclude_binary=True)
-        
-        # 10. FINAL VALIDATION
-        self.logger.info("✅ Schritt 10: Finale Validierung")
+
+        # Finale Validierung
+        self.logger.info("✅ Finale Validierung")
         validation_report = self.validate_features(features_df)
-        
+
         end_time = datetime.now()
         execution_time = (end_time - start_time).total_seconds()
-        
+
         feature_count = len([col for col in features_df.columns if col != 'Kunde'])
-        self.logger.info(f"🎉 Cox-Feature-Engineering abgeschlossen!")
-        self.logger.info(f"   📊 {feature_count} finale Features erstellt")
-        self.logger.info(f"   👥 {len(features_df)} Kunden verarbeitet")
-        self.logger.info(f"   ⏱️ Ausführungszeit: {execution_time:.2f}s")
-        
-        # Feature-Statistiken speichern
+        self.logger.info("🎉 Cox-Feature-Engineering abgeschlossen!")
+        self.logger.info("   📊 %s finale Features", feature_count)
+        self.logger.info("   👥 %s Kunden verarbeitet", len(features_df))
+        self.logger.info("   ⏱️ Ausführungszeit: %.2fs", execution_time)
+
         self.feature_stats = {
             'total_features': feature_count,
             'customers_count': len(features_df),
@@ -1014,7 +1178,7 @@ class CoxFeatureEngine:
             'validation_report': validation_report,
             'selected_features': self.selected_features
         }
-        
+
         return features_df
     
     def get_feature_importance_report(self) -> Dict[str, Any]:
@@ -1192,17 +1356,18 @@ if __name__ == "__main__":
         'event': [1, 0]
     })
     
-    # Feature-Engineering testen
-    try:
-        features = engine.create_cox_features(survival_panel, test_data)
-        print(f"✅ Test erfolgreich: {len(features.columns)-1} Features erstellt")
-        print(f"   Features: {[col for col in features.columns if col != 'Kunde']}")
-        
-        # Report erstellen
-        report = engine.get_feature_importance_report()
-        print(f"📊 Report erstellt: {report['metadata']['total_features']} Features")
-        
-    except Exception as e:
-        print(f"❌ Test fehlgeschlagen: {e}")
-        import traceback
-        traceback.print_exc()
+    if engine.feature_config.get('use_precomputed_features', True):
+        print("ℹ️ Precomputed Features erforderlich – manueller Smoke-Test übersprungen.")
+    else:
+        try:
+            features = engine.create_cox_features(survival_panel, test_data)
+            print(f"✅ Test erfolgreich: {len(features.columns)-1} Features erstellt")
+            print(f"   Features: {[col for col in features.columns if col != 'Kunde']}")
+
+            report = engine.get_feature_importance_report()
+            print(f"📊 Report erstellt: {report['metadata']['total_features']} Features")
+
+        except Exception as e:
+            print(f"❌ Test fehlgeschlagen: {e}")
+            import traceback
+            traceback.print_exc()

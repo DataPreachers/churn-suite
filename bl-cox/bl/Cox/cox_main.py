@@ -79,17 +79,38 @@ class CoxPipeline:
             
             # 2. Features erstellen
             self.logger.info("⚙️ Erstelle Features")
-            features = self.feature_engine.create_cox_features(survival_panel, stage0_data)
+            features = self.feature_engine.create_cox_features(
+                survival_panel,
+                stage0_data=stage0_data,
+                experiment_id=churn_experiment_id
+            )
             
             # 3. Modell trainieren
             self.logger.info("🎯 Trainiere Modell")
-            training_data = self.model_trainer.prepare_cox_data(survival_panel, features)
-            
+            combined_data = self.model_trainer.prepare_cox_data(survival_panel, features)
+            train_data, holdout_data = self.model_trainer.split_train_validation(combined_data)
+
             if self.config['enable_hyperparameter_tuning']:
-                self.model_trainer.hyperparameter_tuning(training_data)
-            
-            model = self.model_trainer.train_cox_model(training_data)
-            performance = self.model_trainer.evaluate_model_performance(model, training_data)
+                self.model_trainer.hyperparameter_tuning(train_data)
+
+            model = self.model_trainer.train_cox_model(train_data)
+            train_performance = self.model_trainer.evaluate_model_performance(
+                model,
+                train_data,
+                dataset_label='train'
+            )
+            validation_performance = self.model_trainer.evaluate_model_performance(
+                model,
+                holdout_data,
+                dataset_label='validation'
+            )
+
+            validation_evaluation = self.evaluator.evaluate_model_performance(
+                model=model,
+                test_data=holdout_data,
+                duration_col='duration',
+                event_col='event'
+            )
             
             # 4. Kunden priorisieren
             self.logger.info("🎯 Priorisiere Kunden")
@@ -108,8 +129,8 @@ class CoxPipeline:
             end_time = datetime.now()
             execution_time = (end_time - start_time).total_seconds()
             
-            c_index = performance['concordance_index']
-            target_achieved = c_index >= self.config['target_c_index']
+            validation_c_index = validation_performance['concordance_index']
+            target_achieved = validation_performance['target_achieved']
             
             results = {
                 'metadata': {
@@ -118,23 +139,31 @@ class CoxPipeline:
                     'churn_experiment_id': churn_experiment_id
                 },
                 'performance_summary': {
-                    'c_index_achieved': c_index,
+                    'train': train_performance,
+                    'validation': validation_performance,
                     'target_achieved': target_achieved,
-                    'vs_historical': c_index / 0.993,
-                    'vs_optimized': c_index / 0.890
+                    'vs_historical': validation_c_index / 0.993,
+                    'vs_optimized': validation_c_index / 0.890
                 },
+                'evaluation_details': validation_evaluation,
                 'data_summary': {
                     'customers_analyzed': len(stage0_data['Kunde'].unique()),
                     'survival_records': len(survival_panel),
                     'features_created': len(features.columns) - 1,
-                    'customers_prioritized': len(prioritization_data)
+                    'customers_prioritized': len(prioritization_data),
+                    'train_records': len(train_data),
+                    'validation_records': len(holdout_data)
                 },
                 'output_files': {
                     'prioritization': str(prioritization_path)
                 }
             }
             
-            self.logger.info(f"✅ Analyse abgeschlossen - C-Index: {c_index:.4f}")
+            self.logger.info(
+                "✅ Analyse abgeschlossen - Train C-Index: %.4f | Validation C-Index: %.4f",
+                train_performance['concordance_index'],
+                validation_c_index
+            )
             return results
             
         except Exception as e:
@@ -240,10 +269,13 @@ def main():
             results = pipeline.run_full_analysis(churn_experiment_id=args.churn_experiment)
             
             performance = results['performance_summary']
+            train_perf = performance['train']
+            val_perf = performance['validation']
             print("\n" + "=" * 60)
             print("🎉 VOLLSTÄNDIGE ANALYSE ERFOLGREICH ABGESCHLOSSEN")
             print("=" * 60)
-            print(f"🎯 C-Index erreicht: {performance['c_index_achieved']:.4f}")
+            print(f"🎯 C-Index (Train): {train_perf['concordance_index']:.4f}")
+            print(f"🎯 C-Index (Validation): {val_perf['concordance_index']:.4f}")
             print(f"✅ Ziel erreicht: {'Ja' if performance['target_achieved'] else 'Nein'}")
             print(f"📈 vs. Historical (0.993): {performance['vs_historical']:.1%}")
             print(f"📈 vs. Optimized (0.890): {performance['vs_optimized']:.1%}")
@@ -251,6 +283,7 @@ def main():
             print(f"👥 Kunden analysiert: {results['data_summary']['customers_analyzed']}")
             print(f"📊 Features erstellt: {results['data_summary']['features_created']}")
             print(f"🎯 Kunden priorisiert: {results['data_summary']['customers_prioritized']}")
+            print(f"📊 Train Records: {results['data_summary']['train_records']} | Validation Records: {results['data_summary']['validation_records']}")
             print(f"💾 Priorisierung: {results['output_files']['prioritization']}")
             print("=" * 60)
         

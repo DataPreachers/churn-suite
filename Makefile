@@ -1,4 +1,4 @@
-.PHONY: start stop restart status logs down shutdown ingest cleanDB save push savepush
+.PHONY: start stop restart status logs down shutdown ingest cleanDB save push savepush cox
 
 # Ports
 RUNNER_PORT=5050
@@ -83,4 +83,8 @@ savepush: save push
 shap:
 	@echo "Running SHAP for EXP_ID=$(EXP_ID) ..."
 	@PYTHONPATH=$(PWD)/bl-shap/bl:$(PWD)/bl-churn:$(PWD)/json-database $(PYTHON) -m Shap.shap_runner --experiment-id $(EXP_ID) --sample-size $(SAMPLE_SIZE) --top-k $(TOPK) --batch-size $(BATCH_SIZE) --background-size $(BG_SIZE) --plots $(PLOTS)
+
+cox:
+	@echo "Running Cox coverage diagnostics ..."
+	@PYTHONPATH=$(PWD)/bl-cox/bl:$(PWD)/bl-churn:$(PWD)/json-database $(PYTHON) bl-cox/bl/Cox/diagnostics/cox_coverage_analyzer.py
 

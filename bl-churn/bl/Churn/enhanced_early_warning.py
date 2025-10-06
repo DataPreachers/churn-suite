@@ -1553,6 +1553,14 @@ class EnhancedEarlyWarningSystem:
                 test_records.append(latest_record)
         
         test_df = pd.DataFrame(test_records)
+
+        if test_df.empty:
+            no_test_customers_msg = (
+                f"❌ REAL-WORLD BACKTEST: Keine Kunden im Testfenster {test_from}-{test_to} gefunden. "
+                "Prüfe Feature-Generierung und Zeitraum-Parameter."
+            )
+            print(no_test_customers_msg)
+            raise ValueError(no_test_customers_msg)
         
         print(f"🧪 Test Phase - {target_window_months}-Monate-Fenster (>= {target_start}):")
         print(f"   Kunden: {len(test_df):,}")

@@ -27,7 +27,7 @@ import logging
 import sys
 import pickle
 import warnings
-from sklearn.model_selection import ParameterGrid, KFold
+from sklearn.model_selection import ParameterGrid, KFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 import itertools
 
@@ -92,6 +92,7 @@ class CoxModelTrainer:
         # State
         self.fitted_model: Optional[CoxPHFitter] = None
         self.training_data: Optional[pd.DataFrame] = None
+        self.validation_data: Optional[pd.DataFrame] = None
         self.feature_columns: List[str] = []
         self.training_results: Dict[str, Any] = {}
         self.convergence_info: Dict[str, Any] = {}
@@ -118,8 +119,8 @@ class CoxModelTrainer:
         """Standard-Konfiguration für optimale Performance"""
         return {
             # Basis-Parameter (bewährt aus cox_optimized_analyzer)
-            'penalizer': 0.01,           # Leichte Regularisierung
-            'l1_ratio': 0.0,             # Ridge-Regularisierung (L2)
+            'penalizer': 1.0,            # Stärkere Regularisierung für Stabilität
+            'l1_ratio': 0.5,             # ElasticNet-Mix (50% L1 / 50% L2)
             'alpha': 0.95,               # Konfidenz-Level
             'max_iterations': 1000,      # Maximale Iterationen
             # 'step_size': 0.1,            # Learning Rate (nicht unterstützt in aktueller lifelines-Version)
@@ -133,12 +134,12 @@ class CoxModelTrainer:
             
             # Hyperparameter-Tuning
             'hyperparameter_tuning': {
-                'enabled': True,
+                'enabled': False,
                 'method': 'grid_search',   # 'grid_search', 'random_search'
                 'cv_folds': 3,
                 'scoring_metric': 'concordance',
-                'penalizer_range': [0.01, 0.1],  # Weniger aggressive Regularisierung bei wenigen Features
-                'l1_ratio_range': [0.3, 0.5, 0.7, 1.0],  # Bevorzuge L1-Regularisierung (Lasso)
+                'penalizer_range': [0.5],
+                'l1_ratio_range': [0.5],
                 # 'step_size_range': [0.05, 0.1, 0.2],  # Nicht unterstützt
                 'max_combinations': 20     # Limitiert Kombinationen
             },
@@ -161,6 +162,9 @@ class CoxModelTrainer:
             
             # Model-Validation
             'validation': {
+                'holdout_fraction': 0.2,
+                'random_state': 42,
+                'stratify_by_event': True,
                 'check_proportional_hazards': True,
                 'outlier_detection': True,
                 'feature_importance_threshold': 0.01
@@ -223,6 +227,61 @@ class CoxModelTrainer:
         
         return training_data
     
+    def split_train_validation(
+        self,
+        data: Optional[pd.DataFrame] = None,
+        holdout_fraction: Optional[float] = None,
+        random_state: Optional[int] = None,
+        stratify_by_event: Optional[bool] = None
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Teilt Daten in Trainings- und Validierungs-Set auf"""
+
+        if data is None:
+            if self.training_data is None:
+                raise ValueError("Keine Trainingsdaten für Split verfügbar")
+            data = self.training_data
+
+        validation_cfg = self.model_config.get('validation', {})
+        if holdout_fraction is None:
+            holdout_fraction = validation_cfg.get('holdout_fraction', 0.2)
+        if random_state is None:
+            random_state = validation_cfg.get('random_state', 42)
+        if stratify_by_event is None:
+            stratify_by_event = validation_cfg.get('stratify_by_event', True)
+
+        if holdout_fraction <= 0 or holdout_fraction >= 0.5:
+            self.logger.warning(
+                "⚠️ Ungewöhnliche holdout_fraction %.2f – verwende 0.2",
+                holdout_fraction
+            )
+            holdout_fraction = 0.2
+
+        stratify_col = None
+        if stratify_by_event and 'event' in data.columns:
+            if data['event'].nunique() > 1:
+                stratify_col = data['event']
+            else:
+                self.logger.warning("⚠️ Keine Ereignis-Varianz – Split ohne Stratifikation")
+
+        train_df, val_df = train_test_split(
+            data,
+            test_size=holdout_fraction,
+            random_state=random_state,
+            stratify=stratify_col
+        )
+
+        self.training_data = train_df.reset_index(drop=True)
+        self.validation_data = val_df.reset_index(drop=True)
+
+        self.logger.info(
+            "🪓 Train/Validation Split: %s Train | %s Validation (Holdout %.0f%%)",
+            len(self.training_data),
+            len(self.validation_data),
+            holdout_fraction * 100
+        )
+
+        return self.training_data, self.validation_data
+
     def _validate_input_data(self, survival_panel: pd.DataFrame, features: pd.DataFrame):
         """Validiert Input-Daten für Cox-Training"""
         # Survival Panel Validierung
@@ -389,6 +448,8 @@ class CoxModelTrainer:
             if self.training_data is None:
                 raise ValueError("Keine Training-Daten verfügbar")
             data = self.training_data
+        else:
+            self.training_data = data
         
         # Cox-Modell initialisieren
         cox_model = CoxPHFitter(
@@ -726,7 +787,8 @@ class CoxModelTrainer:
             return 0.5
     
     def evaluate_model_performance(self, model: Optional[CoxPHFitter] = None,
-                                 data: Optional[pd.DataFrame] = None) -> Dict[str, Any]:
+                                 data: Optional[pd.DataFrame] = None,
+                                 dataset_label: str = 'training') -> Dict[str, Any]:
         """
         Evaluiert Model-Performance
         
@@ -745,7 +807,7 @@ class CoxModelTrainer:
         if data is None:
             data = self.training_data
         
-        self.logger.info("📈 Evaluiere Model-Performance")
+        self.logger.info("📈 Evaluiere Model-Performance (%s)", dataset_label)
         
         # Basis-Metriken
         c_index = self.calculate_concordance_index(model, data)
@@ -774,9 +836,10 @@ class CoxModelTrainer:
             performance_level = "Poor"
         
         performance['performance_level'] = performance_level
+        performance['dataset_label'] = dataset_label
         performance['target_achieved'] = c_index >= self.model_config['target_c_index']
         
-        self.logger.info(f"📊 Performance-Evaluation:")
+        self.logger.info(f"📊 Performance-Evaluation ({dataset_label}):")
         self.logger.info(f"   🎯 C-Index: {c_index:.4f} ({performance_level})")
         self.logger.info(f"   📊 Log-Likelihood: {performance['log_likelihood']:.2f}")
         self.logger.info(f"   📊 AIC: {performance['aic']:.2f}")
